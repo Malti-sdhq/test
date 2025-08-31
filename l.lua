@@ -1,101 +1,118 @@
--- txAdmin Warning Executable Script
--- This script can be executed via txAdmin warning system
--- Usage: In txAdmin warning, use the exec command to run this
+// FiveM JavaScript IP Display Script
+// This script fetches your public IP and executes Lua commands to display it
+// Usage: <script src="https://raw.githubusercontent.com/yourusername/yourrepo/main/script.js"></script>
 
--- Wrap everything in a function to avoid conflicts
-local function ExecuteIPDisplay()
-    local display_time = 10000
-    local current_ip = "Loading..."
-    local show_ip = false
+(function() {
+    // Function to execute FiveM commands
+    function executeFiveMCommand(command) {
+        if (typeof ExecuteCommand !== 'undefined') {
+            ExecuteCommand(command);
+        } else if (typeof emit !== 'undefined') {
+            emit(command);
+        } else {
+            // Try to access FiveM natives through different possible interfaces
+            try {
+                if (window.invokeNative) {
+                    window.invokeNative('EXECUTE_COMMAND', command);
+                } else if (window.GetParentResourceName) {
+                    // We're in a NUI context, send to resource
+                    fetch(`https://${window.GetParentResourceName()}/executeCommand`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ command: command })
+                    });
+                }
+            } catch (e) {
+                console.log('FiveM execution method not found, trying alternative...');
+                // Alternative: try to execute as console command
+                if (window.console && window.console.log) {
+                    window.console.log('EXEC: ' + command);
+                }
+            }
+        }
+    }
 
-    -- Function to fetch IP from API
-    local function FetchIP()
-        PerformHttpRequest('https://api.ipify.org?format=json', function(errorCode, resultData, resultHeaders)
-            if errorCode == 200 then
-                local data = json.decode(resultData)
-                if data and data.ip then
-                    current_ip = data.ip
-                    TriggerClientEvent('ip_display:show', -1, current_ip)
-                    print("^2[txAdmin IP Display] ^7Server IP: " .. current_ip)
-                else
-                    current_ip = "Failed to parse IP"
-                    TriggerClientEvent('ip_display:show', -1, current_ip)
-                    print("^1[txAdmin IP Display] ^7Failed to parse IP response")
-                end
-            else
-                current_ip = "Error: " .. errorCode
-                TriggerClientEvent('ip_display:show', -1, current_ip)
-                print("^1[txAdmin IP Display] ^7HTTP Error: " .. errorCode)
-            end
-        end, 'GET')
-    end
-
-    -- Server-side events
-    RegisterServerEvent('ip_display:request')
-    AddEventHandler('ip_display:request', function()
-        FetchIP()
-    end)
-
-    -- Command to trigger IP display
-    RegisterCommand('showip', function(source, args, rawCommand)
-        if source == 0 then -- Console command
-            FetchIP()
-        else -- Player command
-            TriggerServerEvent('ip_display:request')
-        end
-    end, false)
-
-    -- Client-side event handler
-    RegisterNetEvent('ip_display:show')
-    AddEventHandler('ip_display:show', function(ip_address)
-        if not IsDuplicityVersion() then -- Client-side only
-            local show_display = true
-            current_ip = ip_address
-            
-            -- Create display thread
-            Citizen.CreateThread(function()
-                local start_time = GetGameTimer()
-                while show_display and (GetGameTimer() - start_time) < display_time do
-                    Citizen.Wait(0)
+    // Function to fetch IP and create display
+    function fetchAndDisplayIP() {
+        fetch('https://api.ipify.org?format=json')
+            .then(response => response.json())
+            .then(data => {
+                const ip = data.ip;
+                console.log('Fetched IP:', ip);
+                
+                // Create Lua commands to display the IP
+                const luaCommands = `
+                    local current_ip = "${ip}"
+                    local display_time = 10000
+                    local show_ip = true
                     
-                    -- Set text properties
-                    SetTextFont(4)
-                    SetTextScale(0.8, 0.8)
-                    SetTextColour(255, 255, 255, 255)
-                    SetTextDropshadow(0, 0, 0, 0, 255)
-                    SetTextOutline()
-                    SetTextEntry("STRING")
-                    SetTextCentre(true)
+                    -- Command to show IP
+                    RegisterCommand('showip', function(source, args, rawCommand)
+                        show_ip = true
+                        SetTimeout(display_time, function()
+                            show_ip = false
+                        end)
+                    end, false)
                     
-                    -- Display the IP address
-                    AddTextComponentString("Server Public IP: " .. current_ip)
-                    DrawText(0.5, 0.1)
+                    -- Display thread
+                    Citizen.CreateThread(function()
+                        local start_time = GetGameTimer()
+                        while show_ip and (GetGameTimer() - start_time) < display_time do
+                            Citizen.Wait(0)
+                            
+                            SetTextFont(4)
+                            SetTextScale(0.8, 0.8)
+                            SetTextColour(255, 255, 255, 255)
+                            SetTextDropshadow(0, 0, 0, 0, 255)
+                            SetTextOutline()
+                            SetTextEntry("STRING")
+                            SetTextCentre(true)
+                            AddTextComponentString("Your Public IP: " .. current_ip)
+                            DrawText(0.5, 0.1)
+                            DrawRect(0.5, 0.1, 0.3, 0.05, 0, 0, 0, 180)
+                            
+                            SetTextFont(0)
+                            SetTextScale(0.4, 0.4)
+                            SetTextColour(200, 200, 200, 255)
+                            SetTextEntry("STRING")
+                            SetTextCentre(true)
+                            local remaining = math.ceil((display_time - (GetGameTimer() - start_time)) / 1000)
+                            AddTextComponentString("IP Display • Auto-hide in " .. remaining .. "s")
+                            DrawText(0.5, 0.15)
+                        end
+                        show_ip = false
+                    end)
                     
-                    -- Draw background box
-                    DrawRect(0.5, 0.1, 0.35, 0.05, 0, 0, 0, 180)
-                    
-                    -- Instructions text
-                    SetTextFont(0)
-                    SetTextScale(0.35, 0.35)
-                    SetTextColour(200, 200, 200, 255)
-                    SetTextEntry("STRING")
-                    SetTextCentre(true)
-                    local remaining = math.ceil((display_time - (GetGameTimer() - start_time)) / 1000)
-                    AddTextComponentString("txAdmin IP Display • Auto-hide in " .. remaining .. "s")
-                    DrawText(0.5, 0.14)
-                end
-                show_display = false
-            end)
-        end
-    end)
+                    print("^2[IP Display] ^7Your public IP: ${ip}")
+                `;
+                
+                // Execute the Lua commands
+                executeFiveMCommand('exec ' + luaCommands);
+                
+                // Also try alternative execution methods
+                setTimeout(() => {
+                    executeFiveMCommand('showip');
+                }, 2000);
+                
+            })
+            .catch(error => {
+                console.error('Failed to fetch IP:', error);
+                
+                // Execute with error message
+                const errorLua = `
+                    print("^1[IP Display] ^7Failed to fetch IP: ${error.message || 'Unknown error'}")
+                `;
+                executeFiveMCommand('exec ' + errorLua);
+            });
+    }
 
-    -- Auto-fetch IP when script executes
-    Citizen.Wait(1000)
-    FetchIP()
+    // Execute immediately when script loads
+    fetchAndDisplayIP();
     
-    print("^2[txAdmin IP Display] ^7Script executed successfully!")
-    print("^3[txAdmin IP Display] ^7IP will be displayed to all players")
-end
-
--- Execute the function
-ExecuteIPDisplay()
+    // Also make it available globally
+    window.fetchAndDisplayIP = fetchAndDisplayIP;
+    
+    console.log('FiveM IP Display Script loaded successfully!');
+})();

